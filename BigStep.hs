@@ -96,8 +96,7 @@ ebigStep (Num n,s) = n
 ebigStep (Soma e1 e2,s)  = ebigStep (e1,s) + ebigStep (e2,s)
 ebigStep (Sub e1 e2,s)  = ebigStep (e1,s) - ebigStep (e2,s)
 ebigStep (Mult e1 e2,s)  = ebigStep (e1,s) * ebigStep (e2,s)
---ebigStep (Div e1 e2, s) =  (ebigStep (e1, s)) / (ebigStep (e2, s))
-
+ebigStep (Div e1 e2, s) =  div (ebigStep (e1, s)) (ebigStep (e2, s))
 
 
 bbigStep :: (B,Memoria) -> Bool
@@ -106,21 +105,33 @@ bbigStep (FALSE,s) = False
 bbigStep (Not b,s) 
    | bbigStep (b,s) == True     = False
    | otherwise                  = True 
---bbigStep (And b1 b2,s )  = bbigStep(b1,s) && bbigStep(b2,s)
---bbigStep (Or b1 b2,s )  =
---bbigStep (Leq e1 e2,s) =
---bbigStep (Igual e1 e2,s) = -- recebe duas expressões aritméticas e devolve um valor booleano dizendo se são iguais
+bbigStep (And b1 b2, s) = bbigStep(b1, s) && bbigStep(b2, s)
+bbigStep (Or b1 b2, s)  = bbigStep(b1, s) || bbigStep(b2, s)
+bbigStep (Leq e1 e2, s) = ebigStep(e1, s) <= ebigStep(e2, s)
+bbigStep (Igual e1 e2, s) = ebigStep(e1, s) == ebigStep(e2, s)
 
 cbigStep :: (C,Memoria) -> (C,Memoria)
-cbigStep (Skip,s) = (Skip,s)
--- cbigStep (If b c1 c2,s)  
---cbigStep (Seq c1 c2,s)  
---cbigStep (Atrib (Var x) e,s) 
--- cbigStep (Twice c,s)   ---- Executa o comando C 2 vezes
-----cbigStep (RepeatUntil c b,s)   --- Repeat C until B: executa C até que B seja verdadeiro
---cbigStep (ExecN c e,s)      ---- ExecN C n: executa o comando C n vezes
---cbigStep (Swap (Var x) (Var y),s) --- recebe duas variáveis e troca o conteúdo delas
---cbigStep (DAtrrib (Var x) (Var y) e1 e2,s) -- Dupla atribuição: recebe duas variáveis x e y e duas expressões "e1" e "e2". Faz x:=e1 e y:=e2.
+cbigStep (Skip, s) = (Skip, s)
+cbigStep (If b c1 c2, s)
+   | bbigStep(b, s) == True   = cbigStep (c1, s)
+   | otherwise                = cbigStep (c2, s)
+cbigStep (Seq c1 c2, s) =
+   let (Skip, s') = cbigStep (c1, s) in cbigStep (c2, s')
+cbigStep (Atrib (Var x) e, s) = (Skip, mudaVar s x (ebigStep (e, s)))
+cbigStep (Twice c, s) =
+   let (Skip, s') = cbigStep (c, s) in cbigStep (c, s')
+cbigStep (RepeatUntil c b, s)
+   | bbigStep (b, s) == True = (Skip, s)
+   | otherwise = let (Skip, s') = cbigStep (c, s) in (cbigStep (RepeatUntil c b, s'))
+cbigStep (ExecN c e,s)
+   | ebigStep (e, s) == 0 = (Skip, s)
+   | otherwise = let (Skip, s') = cbigStep (c, s) in cbigStep (ExecN c (Sub e (Num 1)), s')
+cbigStep (Swap (Var x) (Var y),s) =
+   let xValue = procuraVar s x
+      in let yValue = (procuraVar s y)
+         in (Skip, mudaVar (mudaVar s y xValue) x yValue)
+cbigStep (DAtrrib (Var x) (Var y) e1 e2,s) =
+   (Skip, mudaVar (mudaVar s y (ebigStep (e2, s))) x (ebigStep (e1, s)))
 
 --------------------------------------
 ---
