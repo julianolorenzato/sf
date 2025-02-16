@@ -133,6 +133,10 @@ cbigStep (Swap (Var x) (Var y),s) =
 cbigStep (DAtrrib (Var x) (Var y) e1 e2,s) =
    (Skip, mudaVar (mudaVar s y (ebigStep (e2, s))) x (ebigStep (e1, s)))
 
+cbigStep (While b c, s)
+   | bbigStep(b,s) == False = (Skip, s)
+   | otherwise = let (Skip, s') = cbigStep (c, s) in cbigStep (While b c, s')
+   
 --------------------------------------
 ---
 --- Exemplos de programas para teste
@@ -144,7 +148,7 @@ cbigStep (DAtrrib (Var x) (Var y) e1 e2,s) =
 -------------------------------------
 
 exSigma2 :: Memoria
-exSigma2 = [("x",3), ("y",0), ("z",0)]
+exSigma2 = [("x",5), ("y",0), ("z",0)]
 
 
 ---
@@ -159,8 +163,6 @@ progExp2 = Sub (Num 5)  (Var "x")
 
 progExp3 :: E
 progExp3 = Mult (Num 2)  (Var "x")
-
-
 
 ---
 --- para rodar:
